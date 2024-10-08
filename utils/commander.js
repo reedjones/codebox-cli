@@ -13,12 +13,12 @@ module.exports = () => {
     .option('-d, --delete', 'Delete Code snippet')
     .option('-g, --gist <type>', 'Import Snippets from Github Gists')
     .option('-e, --export', 'Export Codebox snippets')
-    .option('-l, --login', 'Login Github Account')
+    .option('-p, --login', 'Login Github Account')
     .option('-c, --clipboard', 'Code snippet will be from the clipboard')
     .option('-l, --language <type>', 'Set Programming Language')
     .option('-t, --title <type>', 'Set Code snippet title')
     .option('-k, --keyword <type>', 'Keyword to search')
-  
+
   program.parse(process.argv)
   return program
 }

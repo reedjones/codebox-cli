@@ -1,32 +1,41 @@
-#!/usr/bin/env node 
+#!/usr/bin/env node
 
 const program = require('./utils/commander')()
 const github = require('./utils/github')
 const actions = require('./actions')
 
-if (program.init)
+if (program.init) {
   actions.initializeCodebox()
-  
-if (program.new)
+}
+
+if (program.new) {
   actions.createProgrammingLanguage(program)
+}
 
-if (program.snip)
+if (program.snip) {
   actions.createCodeSnippet(program)
+}
 
-if (program.export)
+if (program.export) {
   actions.exportCodebox(program)
+}
 
-if (program.find)
+if (program.find) {
   actions.searchCodeSnippets(program)
+}
 
-if (program.update)
+if (program.update) {
   actions.updateCodeSnippets(program)
+}
 
-if (program.all)
+if (program.all) {
   actions.getAllCodeSnippets(program)
+}
 
-if (program.delete)
+if (program.delete) {
   actions.deleteCodeSnippets(program)
+}
 
-if (program.login)
+if (program.login) {
   github.checkAccount()
+}

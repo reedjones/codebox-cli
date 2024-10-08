@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 
 const os = require('os');
-
+const { exec } = require('child_process');
 
 // Get the user's home directory
 const homeDir = os.homedir();
@@ -18,34 +18,31 @@ if (process.platform === 'win32') {
     dataDir = path.join(homeDir, '.local', 'share'); // Common path for Linux
 }
 
-// Define the directory to create
 const myAppDir = path.join(dataDir, 'CodeBox');
+
+// Define the directory to create
+
 
 // Create the directory if it doesn't exist
 if (!fs.existsSync(myAppDir)) {
     fs.mkdirSync(myAppDir, { recursive: true });
+    console.log(`Data directory created at: ${myAppDir}`);
+    console.log(`Environment variable MY_APP_DATA_DIR set to: ${process.env.MY_APP_DATA_DIR}`);
 }
 
 process.env.MY_APP_DATA_DIR = myAppDir;
-
 const envVarName = 'MY_APP_DATA_DIR'
-
-
-console.log(`Data directory created at: ${myAppDir}`);
-console.log(`Environment variable MY_APP_DATA_DIR set to: ${process.env.MY_APP_DATA_DIR}`);
-
-
 const markerFilePath = path.join(myAppDir, '.script_ran');
 
 if (fs.existsSync(markerFilePath)) {
-  console.log('The script has already been run. continuing without changes.');
-  //process.exit(0); // Exit if the script has already run
+    console.log('The script has already been run. continuing without changes.');
+    //process.exit(0); // Exit if the script has already run
 } else {
-  setEnvVar()
+    setEnvVar()
 }
 
 // Set an environment variable to store the path to the directory
-function setEnvVar(){
+function setEnvVar() {
     let command;
 
     if (process.platform === 'win32') {
@@ -74,7 +71,7 @@ function setEnvVar(){
     }
 
     fs.writeFileSync(markerFilePath, 'Script has run successfully.', { encoding: 'utf8' });
-console.log(`Marker file created at: ${markerFilePath}`);
+    console.log(`Marker file created at: ${markerFilePath}`);
 }
 
 
@@ -83,7 +80,7 @@ console.log(`Marker file created at: ${markerFilePath}`);
 
 module.exports = {
     myAppDir: () => myAppDir,
-    
+
     getAppPathFromEnv: () => {
         return process.env.MY_APP_DATA_DIR
     },
@@ -120,7 +117,14 @@ module.exports = {
     },
 
     readFile: (filename) => {
-        return fs.readFileSync(filename)
+        try {
+            const data = fs.readFileSync(filename, 'utf8');
+            //console.log(`read file: ${data}`);
+            return data
+        } catch (err) {
+            console.error(err);
+        }
+
     },
 
     writeJSONFile: (json, filename) => {

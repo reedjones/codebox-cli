@@ -42,6 +42,8 @@ const getProgrammingLanguageFilename = async (language) => {
   if (!fs.existsSync(filename)) {
     logger.error(strings.error.noLanguageFound)
     return null
+  } else {
+    logger.info(`loading ${filename}`)
   }
 
   return { filename, language: languageResult.language }
@@ -75,7 +77,11 @@ const codeSnippetList = async (language) => {
 }
 
 const createGists = ({ language, filename, message, jsonData }) => {
-  const gists = new Gists(github.checkAccount())
+  const ghtoken = github.checkAccount()
+  const authData = { 'token': ghtoken }
+  // logger.info(`auth: ${authData}`)
+  const gists = new Gists(authData)
+  //logger.info(gists)
   var mdFilename = tools.createMDFileName(language)
   var gistsData = {
     description: `${language.capitalize()} Code Snippets`,

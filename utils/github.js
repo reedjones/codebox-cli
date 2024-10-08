@@ -33,10 +33,18 @@ module.exports = {
   saveToken: (token) => {
     const encryptedToken = token // cryptr.encrypt(token);
     files.writeFile(ENCRYPTION_FILE_PATH, encryptedToken);
+    console.info('wrote token to file')
     return module.exports.getToken();
   },
 
   checkToken: () => {
+    if (!fs.existsSync(ENCRYPTION_FILE_PATH)) {
+      return module.exports.loginUser();
+    } else {
+      return module.exports.getToken();
+    }
+  },
+  checkAccount: () => {
     if (!fs.existsSync(ENCRYPTION_FILE_PATH)) {
       return module.exports.loginUser();
     } else {
