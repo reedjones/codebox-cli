@@ -1,52 +1,51 @@
-const Gists = require('gists')
-const inquirer = require('inquirer')
-const Cryptr = require('cryptr')
-const fs = require('fs')
-
-const encryption = require('../key.json')
-const files = require('./files')
-
-const cryptr = new Cryptr(encryption.key)
-
-const ENCRYPTION_FILE = 'codebox-acc'
-const ENCRYPTION_DIR = `${files.getCodeboxDirLocation()}/${ENCRYPTION_FILE}`
+const Gists = require('gists');
+const inquirer = require('inquirer');
+//const Cryptr = require('cryptr');
+const fs = require('fs');
+const files = require('./files');
+//const encryption = require('../key.json'); 
+//const cryptr = new Cryptr(encryption.key);
+// there's no need to encrypt the token...
+const ENCRYPTION_FILE = 'github-token';
+const ENCRYPTION_FILE_PATH = `${files.getCodeboxDirLocation()}/${ENCRYPTION_FILE}`;
 
 module.exports = {
-  loginUser: async() => {
+  loginUser: async () => {
     const questions = [
       {
-        name: 'username',
-        type: 'input',
-        message: 'Enter your Github username:'
-      },
-      {
-        name: 'password',
+        name: 'token',
         type: 'password',
-        message: 'Enter your password:'
+        message: 'Enter your GitHub Personal Access Token (PAT):',
+        validate: function (value) {
+          if (value.length) {
+            return true;
+          } else {
+            return 'Please enter a valid token.';
+          }
+        }
       }
-    ]
+    ];
 
-    var githubAccount = await inquirer.prompt(questions)
-    module.exports.saveAccount(githubAccount)
+    const { token } = await inquirer.prompt(questions);
+    module.exports.saveToken(token);
   },
 
-  saveAccount: (githubAccount) => {
-    var account = JSON.stringify(githubAccount)
-    const encrypted = cryptr.encrypt(account)
-
-    files.writeFile(ENCRYPTION_DIR, encrypted)
-    return module.exports.getAccountDetails()
+  saveToken: (token) => {
+    const encryptedToken = token // cryptr.encrypt(token);
+    files.writeFile(ENCRYPTION_FILE_PATH, encryptedToken);
+    return module.exports.getToken();
   },
 
-  checkAccount: () => {
-    if (!fs.existsSync(ENCRYPTION_DIR))
-      module.exports.loginUser()
-    else
-      return module.exports.getAccountDetails()
+  checkToken: () => {
+    if (!fs.existsSync(ENCRYPTION_FILE_PATH)) {
+      return module.exports.loginUser();
+    } else {
+      return module.exports.getToken();
+    }
   },
 
-  getAccountDetails: () => {
-    var account = files.readFile(ENCRYPTION_DIR)
-    return JSON.parse(cryptr.decrypt(account))
+  getToken: () => {
+    const encryptedToken = files.readFile(ENCRYPTION_FILE_PATH);
+    return encryptedToken//cryptr.decrypt(encryptedToken);
   }
-}
+};

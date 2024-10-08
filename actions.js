@@ -5,20 +5,22 @@ const fs = require('fs')
 
 const files = require('./utils/files')
 const tools = require('./utils/tools')
-const inquirer  = require('./utils/inquirer')
+const inquirer = require('./utils/inquirer')
 const strings = require('./strings.json')
 const vim = require('./utils/vim')
 const github = require('./utils/github')
 
-const CODE_FOLDER = 'codebox-codes'
+const CODE_FOLDER = 'snippets'
 const FOLDER_PWD = `${files.getCodeboxDirLocation()}/${CODE_FOLDER}`
 const LANGUAGES_PWD = `${FOLDER_PWD}/languages.json`
 
-String.prototype.capitalize = function() {
+const DEFAULT_LANGUAGE = 'txt'
+
+String.prototype.capitalize = function () {
   return this.charAt(0).toUpperCase() + this.slice(1);
 }
 
-const getProgrammingLanguageFilename = async(language) => {
+const getProgrammingLanguageFilename = async (language) => {
   var languageData = files.readJSONFile(LANGUAGES_PWD)
   var languages = languageData.languages
 
@@ -27,13 +29,13 @@ const getProgrammingLanguageFilename = async(language) => {
     return
   }
 
-  var languageResult = 
+  var languageResult =
     await inquirer.checkForLanguageExisting(
-      language, 
+      language,
       languageData.languages
     )
   var filename = tools.createCodeSnippetFileName(
-    FOLDER_PWD, 
+    FOLDER_PWD,
     languageResult.language
   )
 
@@ -45,7 +47,7 @@ const getProgrammingLanguageFilename = async(language) => {
   return { filename, language: languageResult.language }
 }
 
-const codeSnippetList = async(language) => {
+const codeSnippetList = async (language) => {
   var programmingLanguage = await getProgrammingLanguageFilename(language)
   if (programmingLanguage == undefined) return
 
@@ -57,18 +59,18 @@ const codeSnippetList = async(language) => {
   }
 
   var snippetResult = await inquirer.createChooser(
-    'snippet', 
-    'Choose Code Spinnet:', 
+    'snippet',
+    'Choose Code Snippet:',
     Array.from(jsonData.snippets, (x, y) => {
-      return `${y+1}. ${x.language.capitalize()} - ${x.title}`
+      return `${y + 1}. ${x.language.capitalize()} - ${x.title}`
     })
   )
 
-  return { 
-    jsonData, 
-    snippetResult, 
+  return {
+    jsonData,
+    snippetResult,
     languageResult: programmingLanguage.language,
-    filename: programmingLanguage.filename 
+    filename: programmingLanguage.filename
   }
 }
 
@@ -80,7 +82,7 @@ const createGists = ({ language, filename, message, jsonData }) => {
     public: true,
     files: {}
   }
-  gistsData.files[mdFilename] = {} 
+  gistsData.files[mdFilename] = {}
   gistsData.files[mdFilename]['content'] = tools.createMDFromJSON(jsonData)
 
   if (jsonData.gist !== undefined) {
@@ -91,7 +93,7 @@ const createGists = ({ language, filename, message, jsonData }) => {
   } else {
     gists.create(gistsData).then(res => {
       jsonData['gist'] = res.body.id
-  
+
       files.writeJSONFile(jsonData, filename)
       logger.success(message)
     })
@@ -110,7 +112,7 @@ const initializeCodebox = () => {
   logger.success(strings.success.codeboxInitialized)
 }
 
-const createProgrammingLanguage = async({ language }) => {
+const createProgrammingLanguage = async ({ language }) => {
   var languageResult = await inquirer.checkForLanguageNew(language)
   var filename = tools.createCodeSnippetFileName(FOLDER_PWD, languageResult.language)
   var languageData = files.readJSONFile(LANGUAGES_PWD)
@@ -134,13 +136,20 @@ const createProgrammingLanguage = async({ language }) => {
   logger.success(`${languageResult.language} Programming Language created.`)
 }
 
-const createCodeSnippet = async({ language, title, clipboard }) => {
+const createCodeSnippet = async ({ language, title, clipboard }) => {
+  language = language || DEFAULT_LANGUAGE
+
+  console.info(`Using language ${language}`)
+
   var programmingLanguage = await getProgrammingLanguageFilename(language)
 
-  if (programmingLanguage == undefined) return 
+  if (programmingLanguage == undefined) {
+    console.error('language is undefined')
+    return
+  }
   var jsonData = files.readJSONFile(programmingLanguage.filename)
 
-  var snippetTitleResult = 
+  var snippetTitleResult =
     await inquirer.checkForCodeSnippetTitle(title)
 
   var code = (clipboard) ? clipboardy.readSync() : await vim.editorSync({})
@@ -161,50 +170,56 @@ const createCodeSnippet = async({ language, title, clipboard }) => {
   })
 }
 
-const getAllCodeSnippets = async({ language }) => {
+const getAllCodeSnippets = async ({ language }) => {
   var results = await codeSnippetList(language)
 
   if (results == undefined) return
-  var resultIndex = tools.getCodeboxIndex(results.snippetResult.snippet) 
+  var resultIndex = tools.getCodeboxIndex(results.snippetResult.snippet)
 
   clipboardy.writeSync(results.jsonData.snippets[resultIndex].code.trim())
   logger.success(strings.success.copiedToClipboard)
 }
 
-const updateCodeSnippets = async({ language, clipboard }) => {
+const updateCodeSnippets = async ({ language, clipboard }) => {
   var results = await codeSnippetList(language)
 
   if (results == undefined) return
-  var resultIndex = tools.getCodeboxIndex(results.snippetResult.snippet) 
+  var resultIndex = tools.getCodeboxIndex(results.snippetResult.snippet)
   var codeSnippet = results.jsonData.snippets[resultIndex]
 
   var code = (clipboard) ? clipboardy.readSync() : vim.editorSync({ content: codeSnippet.code })
   results.jsonData.snippets[resultIndex].code = code.trim()
-
-  createGists({
-    language: results.languageResult,
-    filename: results.filename,
-    message: `${results.languageResult} Code Snippet updated.`,
-    jsonData: results.jsonData
-  })
+  try {
+    createGists({
+      language: results.languageResult,
+      filename: results.filename,
+      message: `${results.languageResult} Code Snippet updated.`,
+      jsonData: results.jsonData
+    })
+  } catch (e) {
+    console.error(`Error creating gists \n ${e}`)
+  }
 }
 
-const deleteCodeSnippets = async({ language }) => {
+const deleteCodeSnippets = async ({ language }) => {
   var results = await codeSnippetList(language)
-  
-  if (results == undefined) return
-  var resultIndex = tools.getCodeboxIndex(results.snippetResult.snippet) 
-  results.jsonData.snippets.splice(resultIndex, 1)
 
-  createGists({
-    language: results.languageResult,
-    filename: results.filename,
-    message: `${results.languageResult} Code Snippet deleted.`,
-    jsonData: results.jsonData
-  })
+  if (results == undefined) return
+  var resultIndex = tools.getCodeboxIndex(results.snippetResult.snippet)
+  results.jsonData.snippets.splice(resultIndex, 1)
+  try {
+    createGists({
+      language: results.languageResult,
+      filename: results.filename,
+      message: `${results.languageResult} Code Snippet deleted.`,
+      jsonData: results.jsonData
+    })
+  } catch (e) {
+    console.error(`Error creating gists \n ${e}`)
+  }
 }
 
-const importGist = async({ gist }) => {
+const importGist = async ({ gist }) => {
   const gists = new Gists(github.checkAccount())
   var gistResult = await inquirer.checkForGist(gist)
 
@@ -235,10 +250,10 @@ const importGist = async({ gist }) => {
   })
 }
 
-const exportCodebox = async({ language }) => {
+const exportCodebox = async ({ language }) => {
   var programmingLanguage = await getProgrammingLanguageFilename(language)
 
-  if (programmingLanguage == undefined) return 
+  if (programmingLanguage == undefined) return
   var jsonData = files.readJSONFile(programmingLanguage.filename)
   var mdData = tools.createMDFromJSON(jsonData)
   var mdFilename = tools.createMDFileName(programmingLanguage.language)
@@ -247,12 +262,12 @@ const exportCodebox = async({ language }) => {
   logger.success(`${programmingLanguage.language} Code Snippet exported.`)
 }
 
-const searchCodeSnippets = async({ keyword }) => {
+const searchCodeSnippets = async ({ keyword }) => {
   var languageData = files.readJSONFile(LANGUAGES_PWD)
 
   var keywordResult = await inquirer.checkForKeyword(keyword)
   var searchResults = tools.searchCodeSnippet(
-    languageData.languages, 
+    languageData.languages,
     keywordResult.keyword
   )
 
@@ -260,14 +275,14 @@ const searchCodeSnippets = async({ keyword }) => {
 
   if (searchResults != 0) {
     var snippetResult = await inquirer.createChooser(
-      'snippet', 
-      'Choose Code Spinnet:', 
+      'snippet',
+      'Choose Code Snippet:',
       Array.from(searchResults, (x, y) => {
-        return `${y+1}. ${x.language.capitalize()} - ${x.title}`
+        return `${y + 1}. ${x.language.capitalize()} - ${x.title}`
       })
     )
-    
-    var resultIndex = tools.getCodeboxIndex(snippetResult.snippet) 
+
+    var resultIndex = tools.getCodeboxIndex(snippetResult.snippet)
     clipboardy.writeSync(searchResults[resultIndex].code.trim())
     logger.success(strings.success.copiedToClipboard)
   }
